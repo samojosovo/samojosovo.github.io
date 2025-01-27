@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Todo</title>
+<style>
+#title, textarea, #ok, #edit, td {
+  font-size: 3em;
+  /* equivalent to 16px */
+  line-height: 1.25;
+  /* equivalent to 20px */
+}
+
+#todo-table td, #done-table td {
+  padding: 15px 100px;
+}
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  document.querySelectorAll("table").forEach(function(table) {
+    table.style.display = "none";
+  });
+  
+  // Hide the element with the id "edit"
+  document.getElementById("edit").style.display = "none";
+  
+  // Optionally alert window width and height
+  // alert(window.innerWidth + " " + window.innerHeight);
+});
+
+function okButtonPressed() {
+  document.getElementById("textarea").style.display = "none";
+  document.getElementById("ok").style.display = "none";
+  document.getElementById("edit").style.display = "block";
+  document.getElementById("title").style.display = "none";
+
+  var lines = document.getElementById("textarea").value.split('\n');
+  
+  var todoTable = '<table id="todo-table">';
+  for (var i = 0; i < lines.length; i++) {
+      var rowData = `<td>${lines[i]}</td>`;
+      row = `<tr id="todo-row-${i}" onclick="this.style.display='none'; document.getElementById('done-row-${i}').style.display='block'">${rowData}</tr>`;
+      todoTable = todoTable + row;
+  }
+  todoTable = todoTable + '</table>';
+
+  var doneTable = '<table id="done-table">';
+  for (var i = 0; i < lines.length; i++) {
+      var rowData = `<td style="color: gray;">${lines[i]}</td>`;
+      row = `<tr style="display: none;" id="done-row-${i}" onclick="this.style.display='none'; document.getElementById('todo-row-${i}').style.display='block'">${rowData}</tr>`;
+      doneTable = doneTable + row;
+    }
+  doneTable = doneTable + '</table>';
+
+  document.getElementById('todo-section').innerHTML = todoTable;
+  document.getElementById('done-section').innerHTML = doneTable;  
+}
+
+function editButtonPressed() {
+  document.getElementById("textarea").style.display = "block";
+  document.getElementById("ok").style.display = "block";
+  document.getElementById("edit").style.display = "none";
+  document.getElementById("title").style.display = "block";
+  document.getElementById("todo-table").remove();
+  document.getElementById("done-table").remove();
+}
+
+</script>
+</head>
+
+<body>
+
+<p id="title" style="text-align: center;">
+On-screen todo list
+<p>
+
+
+<form style="text-align: center;">
+  <textarea 
+    id="textarea"
+    style="width: calc(100vw - 40px); height: calc(100vh - 320px); " 
+    placeholder="Create or paste your list here, e.g.:
+bread
+butter 
+milk"></textarea>
+  
+  <button id="ok" type="button" onclick="okButtonPressed()">Ok</button> 
+</form>
+
+<div id="todo-section">
+</div>
+
+<hr style="height: 1px; color: #999; background-color: #999; border: none;">
+
+<div id="done-section">
+</div>
+
+<button id="edit" type="button" onclick="editButtonPressed()" style="position: absolute; top: 10px; right: 10px;">Edit</button> 
+
+
+</body>
+</html> 
