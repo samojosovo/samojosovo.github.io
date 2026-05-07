@@ -1,101 +1,364 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Todo</title>
+<meta name="viewport" content="width=device-width, initial-scale=0.7, interactive-widget=resizes-content">
+<title>ToDo</title>
 <style>
-#title, textarea, #ok, #edit, td {
-  font-size: 3em;
-  /* equivalent to 16px */
-  line-height: 1.25;
-  /* equivalent to 20px */
+@font-face {
+  font-family: 'Inter';
+  src: url('Inter-VariableFont_opsz,wght.ttf') format('truetype');
+}
+*, button, textarea, input {
+  font-family: charter, Georgia, Cambria, 'Times New Roman', Times, serif;
+  touch-action: manipulation; /* disables double-tap zoom on mobile */
+}
+</style>
+<style>
+:root {
+  --base-font-size: 1.7em;
+}
+
+textarea, #ok, #edit {
+  font-size: var(--base-font-size);
+}
+
+#todo-section, #done-section {
+  font-size: var(--base-font-size);
 }
 
 #todo-table td, #done-table td {
-  padding: 15px 100px;
+  padding: 0 16px;
+}
+
+form {
+  text-align: center;
+}
+
+#ok {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  border-radius: 50%;
+  width: 2.0em;
+  height: 2.0em;
+  border: none;
+  background: #cce4f7;
+  color: #000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  cursor: pointer;
+  font-size: calc(var(--base-font-size) * 0.85);
+  line-height: 1;
+}
+
+#clear {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  border-radius: 50%;
+  width: 2.0em;
+  height: 2.0em;
+  border: none;
+  background: #cce4f7;
+  color: #000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  cursor: pointer;
+  font-size: calc(var(--base-font-size) * 0.85);
+  line-height: 1;
+  display: none;
+}
+
+#textarea {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
+  padding: 0.6em 0.8em;
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  resize: none;
+}
+
+hr {
+  height: 1px;
+  color: #999;
+  background-color: #999;
+  border: none;
+}
+
+#done-footer {
+  display: none;
+  position: fixed;
+  bottom: 30px;
+  left: 0;
+  right: 0;
+  align-items: center;
+  pointer-events: none;
+}
+
+#done-count {
+  font-size: var(--base-font-size);
+  color: gray;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: #fff;
+  padding: 0 0.4em;
+  border-radius: 0.3em;
+}
+
+#done-chevron {
+  border: none;
+  border-radius: 50%;
+  background: #cce4f7;
+  color: #000;
+  cursor: pointer;
+  font-size: calc(var(--base-font-size) * 0.85);
+  line-height: 1;
+  width: 2.0em;
+  height: 2.0em;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  padding: 0;
+  margin-left: 30px;
+  pointer-events: all;
+}
+
+#edit {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  border-radius: 50%;
+  width: 2.0em;
+  height: 2.0em;
+  border: none;
+  background: #cce4f7;
+  color: #000;            
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  cursor: pointer;
+  font-size: calc(var(--base-font-size) * 0.85);
+  line-height: 1;
+}
+
+
+
+.done-item {
+  color: gray;
 }
 </style>
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-  document.querySelectorAll("table").forEach(function(table) {
-    table.style.display = "none";
-  });
-  
-  // Hide the element with the id "edit"
-  document.getElementById("edit").style.display = "none";
-  
-  // Optionally alert window width and height
-  // alert(window.innerWidth + " " + window.innerHeight);
-});
+var state = { mode: 'edit', text: '', done: [], collapsed: true };
 
-function okButtonPressed() {
-  document.getElementById("textarea").style.display = "none";
-  document.getElementById("ok").style.display = "none";
-  document.getElementById("edit").style.display = "block";
-  document.getElementById("title").style.display = "none";
+// Escapes user text before inserting into innerHTML to prevent XSS
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
-  var lines = document.getElementById("textarea").value.split('\n');
-  
+function saveState() {
+  window.location.replace('#' + btoa(unescape(encodeURIComponent(JSON.stringify(state)))));
+}
+
+function updateEditButtons() {
+  var hasText = document.getElementById('textarea').value.trim().length > 0;
+  document.getElementById('ok').style.display = hasText ? 'block' : 'none';
+  document.getElementById('clear').style.display = hasText ? 'block' : 'none';
+}
+
+function renderEdit() {
+  document.getElementById('textarea').value = state.text;
+  document.getElementById('textarea').style.display = 'block';
+  document.getElementById('edit').style.display = 'none';
+  document.getElementById('done-footer').style.display = 'none';
+  var tt = document.getElementById('todo-table'); if (tt) tt.remove();
+  var dt = document.getElementById('done-table'); if (dt) dt.remove();
+  document.getElementById('todo-section').style.display = 'none';
+  document.getElementById('done-section').style.display = 'none';
+  document.querySelector('hr').style.display = 'none';
+  updateEditButtons();
+}
+
+function renderTodo() {
+  document.getElementById('textarea').style.display = 'none';
+  document.getElementById('ok').style.display = 'none';
+  document.getElementById('clear').style.display = 'none';
+  document.getElementById('edit').style.display = 'block';
+  document.getElementById('todo-section').style.display = '';
+  document.querySelector('hr').style.display = '';
+
+  var lines = state.text.split('\n');
+  while (state.done.length < lines.length) state.done.push(false);
+  window._doneTotal = lines.filter(l => l.trim()).length;
+
   var todoTable = '<table id="todo-table">';
   for (var i = 0; i < lines.length; i++) {
-      var rowData = `<td>${lines[i]}</td>`;
-      row = `<tr id="todo-row-${i}" onclick="this.style.display='none'; document.getElementById('done-row-${i}').style.display='block'">${rowData}</tr>`;
-      todoTable = todoTable + row;
+    todoTable += `<tr id="todo-row-${i}" style="display:${state.done[i] ? 'none' : ''}" onclick="toggleItem(${i},true)"><td>${esc(lines[i])}</td></tr>`;
   }
-  todoTable = todoTable + '</table>';
+  todoTable += '</table>';
 
   var doneTable = '<table id="done-table">';
   for (var i = 0; i < lines.length; i++) {
-      var rowData = `<td style="color: gray;">${lines[i]}</td>`;
-      row = `<tr style="display: none;" id="done-row-${i}" onclick="this.style.display='none'; document.getElementById('todo-row-${i}').style.display='block'">${rowData}</tr>`;
-      doneTable = doneTable + row;
-    }
-  doneTable = doneTable + '</table>';
+    doneTable += `<tr id="done-row-${i}" style="display:${state.done[i] ? 'block' : 'none'}" onclick="toggleItem(${i},false)"><td class="done-item">${esc(lines[i])}</td></tr>`;
+  }
+  doneTable += '</table>';
 
   document.getElementById('todo-section').innerHTML = todoTable;
-  document.getElementById('done-section').innerHTML = doneTable;  
+  document.getElementById('done-section').innerHTML = doneTable;
+
+  document.getElementById('done-footer').style.display = 'flex';
+  if (state.collapsed) {
+    document.getElementById('done-section').style.display = 'none';
+    document.getElementById('done-chevron').innerHTML = '&#x23EC;&#xFE0E;';
+  } else {
+    document.getElementById('done-section').style.display = '';
+    document.getElementById('done-chevron').innerHTML = '&#x23EB;&#xFE0E;';
+  }
+  updateDoneCount();
+  // fitContent();
+}
+
+function fitContent() {
+  var todoSection = document.getElementById('todo-section');
+  var doneSection = document.getElementById('done-section');
+  var hr = document.querySelector('hr');
+  if (!todoSection || todoSection.style.display === 'none') return;
+  var available = document.getElementById('edit').getBoundingClientRect().top - 10;
+  var rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  var maxPx = rootPx * 2; // --base-font-size: 2em
+  var minPx = 8;
+  var fs = maxPx;
+  todoSection.style.fontSize = fs + 'px';
+  doneSection.style.fontSize = fs + 'px';
+  function totalH() {
+    return todoSection.offsetHeight +
+      (hr.style.display !== 'none' ? hr.offsetHeight : 0) +
+      (doneSection.style.display !== 'none' ? doneSection.offsetHeight : 0);
+  }
+  while (totalH() > available && fs > minPx) {
+    fs -= 0.5;
+    todoSection.style.fontSize = fs + 'px';
+    doneSection.style.fontSize = fs + 'px';
+  }
+}
+
+function toggleItem(i, markDone) {
+  state.done[i] = markDone;
+  // Redistribute consecutive empty lines visible in todo section
+  var lines = state.text.split('\n');
+  // Reset all empty lines to todo, then re-distribute fresh
+  for (var j = 0; j < lines.length; j++) {
+    if (!lines[j].trim()) state.done[j] = false;
+  }
+  // Scan todo-visible lines; move the second of any consecutive empty pair to done
+  var prevEmptyIdx = -1;
+  for (var j = 0; j < lines.length; j++) {
+    if (state.done[j]) continue; // skip done items
+    if (!lines[j].trim()) {
+      if (prevEmptyIdx !== -1) {
+        state.done[j] = true; // extra consecutive empty in todo -> move to done
+        // don't reset prevEmptyIdx: the first empty is still there, next one is also extra
+      } else {
+        prevEmptyIdx = j;
+      }
+    } else {
+      prevEmptyIdx = -1; // non-empty item breaks the streak
+    }
+  }
+  saveState();
+  renderTodo();
+}
+
+function collapseDone() {
+  state.collapsed = true;
+  saveState();
+  updateDoneCount();
+  document.getElementById('done-section').style.display = 'none';
+  document.getElementById('done-chevron').innerHTML = '&#x23EC;';
+  // fitContent();
+}
+
+function expandDone() {
+  state.collapsed = false;
+  saveState();
+  document.getElementById('done-section').style.display = '';
+  document.getElementById('done-chevron').innerHTML = '&#x23EB;&#xFE0E;';
+  // fitContent();
+}
+
+function toggleDone() {
+  if (state.collapsed) expandDone(); else collapseDone();
+}
+
+function updateDoneCount() {
+  var lines = state.text.split('\n');
+  var d = lines.reduce(function(acc, l, i) { return acc + (l.trim() && state.done[i] ? 1 : 0); }, 0);
+  document.getElementById('done-count').textContent = d + '/' + window._doneTotal;
+}
+
+function okButtonPressed() {
+  state.text = document.getElementById('textarea').value;
+  state.done = new Array(state.text.split('\n').length).fill(false);
+  state.mode = 'todo';
+  state.collapsed = true;
+  saveState();
+  renderTodo();
+}
+
+function clearButtonPressed() {
+  if (!confirm('Are you sure you want to delete your ToDo list?')) return;
+  document.getElementById('textarea').value = '';
+  state.text = '';
+  saveState();
 }
 
 function editButtonPressed() {
-  document.getElementById("textarea").style.display = "block";
-  document.getElementById("ok").style.display = "block";
-  document.getElementById("edit").style.display = "none";
-  document.getElementById("title").style.display = "block";
-  document.getElementById("todo-table").remove();
-  document.getElementById("done-table").remove();
+  state.mode = 'edit';
+  saveState();
+  renderEdit();
 }
 
+document.addEventListener('DOMContentLoaded', function() {
+  var hash = window.location.hash.slice(1);
+  if (hash) try { state = JSON.parse(decodeURIComponent(escape(atob(hash)))); } catch(e) {}
+  if (state.mode === 'todo') renderTodo(); else renderEdit();
+  // window.addEventListener('resize', function() { if (state.mode === 'todo') fitContent(); });
+  document.getElementById('textarea').addEventListener('input', function() {
+    state.text = this.value;
+    saveState();
+    updateEditButtons();
+  });
+});
 </script>
 </head>
 
 <body>
 
-<p id="title" style="text-align: center;">
-On-screen todo list
-<p>
-
-
-<form style="text-align: center;">
+<form>
   <textarea 
     id="textarea"
-    style="width: calc(100vw - 40px); height: calc(100vh - 320px); " 
-    placeholder="Create or paste your list here, e.g.:
+    placeholder="Tap here and type or paste your ToDo list here, e.g.:
 bread
 butter 
 milk"></textarea>
   
-  <button id="ok" type="button" onclick="okButtonPressed()">Ok</button> 
+  <button id="ok" type="button" onclick="okButtonPressed()">&#10003;&#xFE0E;</button>
+  <button id="clear" type="button" onclick="clearButtonPressed()">&#x2715;&#xFE0E;</button>
 </form>
 
 <div id="todo-section">
 </div>
 
-<hr style="height: 1px; color: #999; background-color: #999; border: none;">
+<hr>
 
 <div id="done-section">
 </div>
+<div id="done-footer">
+  <span id="done-count"></span><button id="done-chevron" type="button" onclick="toggleDone()">&#x23EC;&#xFE0E;</button>
+</div>
 
-<button id="edit" type="button" onclick="editButtonPressed()" style="position: absolute; top: 10px; right: 10px;">Edit</button> 
+<!-- &#xFE0E; is the Unicode text variation selector: forces the pencil to render as a monochrome glyph instead of a color emoji on mobile -->
+<button id="edit" type="button" onclick="editButtonPressed()">&#9998;&#xFE0E;</button>
 
 
 </body>
